@@ -21,6 +21,11 @@
 >（PROMPT_VERSION v8）；新增**覆盖率自证**（手动卡专属开关 `coverage`，出图后视觉模型逐件判
 > 可见性，结果随 genCache 落库、不进缓存键）；收藏页来源三筛→四筛（新增「自己搭的」）；
 > 衣橱卡片「搭」入口 + 跨 tab 一次性交接槽（ADR-0017）。**需部署 genLookImage（2026-09-15.2）**。
+>
+> 2026-09-17 增量（票 0009 + 0012/0013）：**演绎改为两趟串行**——pass1 人衣主体 → pass2 以产出为
+> 基底、只叠加 ≤2 件有实拍图的配饰（鞋 > 帽 > 包）；两趟**各自独立缓存键**（`key` / `p2Key`）、
+> 预算闸可跳过第二趟并诚实报 `partial`、pass1 后写检查点以便超时时**只补跑 pass2**。
+> 契约与代价见 `docs/adr/0018-two-pass-render.md`；成本口径见 README「费用」。
 
 ---
 
@@ -126,9 +131,9 @@ lib/usage.js                # localMonth北京时间月 + 额度判定（前端p
   出口自证三件套（0008-02，新生成与命中缓存两出口都回传）：modelUsed（实际请求的模型，genCache 同步入库）
   / rewriteStatus（提示词是否被改写，应恒为 not_use）/ usageInfo（输入图张数+计费档）。
   模型换代只改 env：QWEN_EDIT_MODEL（演绎）/ WANX_T2I_MODEL（t2i 兜底），键自动变无需动代码。
-  ⚠️ 演绎是**单趟**生成（一次调用喂 3 图 + 指令）。帽/鞋/包无参考图槽（categoryToSlot 返 null）、
-  只进 prompt 文字 → **时常丢失是结构性的**（用户 2026-09-10 实测帽子常丢）。
-  两趟生图（第二趟给配饰「贴」上去）已立项：`docs/tickets/0009-two-pass-rendering/`，未实现。
+  ⚠️ 演绎为**两趟串行**（2026-09-17）：pass1 人衣主体（一次调用喂 3 图 + 指令）→ pass2 以 pass1 产出为
+  基底、只叠加 ≤2 件有实拍图的配饰（鞋 > 帽 > 包）。配饰在 pass2 才有参考图槽；**无实拍图者不进 pass2**
+  （否则凭空编样式）。契约与代价见 `docs/adr/0018-two-pass-render.md`。
 ```
 
 ## 2. 每个环节的一句话契约
@@ -146,7 +151,7 @@ lib/usage.js                # localMonth北京时间月 + 额度判定（前端p
 | 出图触发 | 拼贴零成本默认；演绎图**只在用户点击时生成**，从不自动（旧试穿入口已退役 0008-01）。**入口有两个**（spec 0011）：AI 方案卡的「演绎」+ 手动搭配卡的「演绎」（`pages/pick-items` 选品后确认），走同一条链路 |
 | 参考照防线 | refImageType 缺失或 self → 自拍**不进画面**（fail-closed）；演绎用内置虚拟模特底图 |
 | 已退役渠道 | 早期专用试穿模型（传其名）→ **显式拒绝**（不静默换渠道、不出图；e2e-render 场景 F 守卫） |
-| 配饰进画面 | 帽/鞋/包**没有参考图槽**，只靠 prompt 文字 → 演绎图里时有时无属**已知结构限制**，别当 bug 查；两趟方案见票 0009 |
+| 配饰进画面 | 帽/鞋/包在 **pass2** 才有参考图槽（≤2 件，鞋 > 帽 > 包）；**无实拍图者不进 pass2**（否则凭空编样式）。第二趟被预算闸跳过 → 诚实报 `partial`。契约见 `docs/adr/0018-two-pass-render.md` |
 
 ## 3. 缓存键公式（输入即键，铁律）
 
@@ -230,7 +235,7 @@ LLM 自报 inspoId
 | fit 品类路由词表 | `utils/fitTaxonomy.js`（前端含编辑三件套）/ `cloudfunctions/aiRecommend/lib/fitTaxonomy.js`（云函数份）|
 | 演绎链路 spec | `docs/specs/0003-render-pipeline-dual-button.md` |
 | 旧试穿入口退役 + 模型换代全程（Why / 票 / 坑） | `docs/tickets/0008-model-lifecycle-migration/`（01 入口退役 / 02 迁 qwen-image-3.0+自证 / 03 保真待做 / 04 输入图归一待做）+ METHODOLOGY §4.7 |
-| 配饰两趟生图（生图重点，未落地） | `docs/tickets/0009-two-pass-rendering/01-accessory-second-pass.md` |
+| 配饰两趟生图（已落地，生图重点） | `docs/adr/0018-two-pass-render.md` + `docs/tickets/0009-two-pass-rendering/01-accessory-second-pass.md` |
 | 词表归一化细节 | `slotMap.js` 头注释（fit 枚举）/ `fitTaxonomy.js`（fit 数组本体）/ `caseGate.js#seasonIntersects`（季节）/ `tempBand.js#ALL_SEASONS`（兜底） |
 | meta 自愈与 _openid 收敛 | `genLookImage/index.js` 0) 段注释 + `CONTEXT.md` ③.5-7 |
 | 保存到相册（两页共用的出口链路） | `utils/saveImage.js` + `utils/saveImage.test.js`（失败分类与调用顺序守卫） |
