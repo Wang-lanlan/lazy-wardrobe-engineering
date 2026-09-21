@@ -1,0 +1,13 @@
+# 统一换行：仓库内一律 LF。
+# 不加这条时 git 会在 Windows 检出时对每个文本文件告警「LF will be replaced by CRLF」，
+# 而且以后每次保存都可能产生整文件级别的假差异（真实改动被淹没）。
+* text=auto eol=lf
+
+# 二进制文件不参与文本归一
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.zip binary
+*.ico binary
