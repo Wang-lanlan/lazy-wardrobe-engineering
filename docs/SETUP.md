@@ -97,7 +97,7 @@
 | `genLookImage` | `SF_I2I_MODEL` | `Qwen/Qwen-Image-Edit-2509`（有参考照） |
 | `genLookImage` | `SF_T2I_MODEL` | `Tongyi-MAI/Z-Image-Turbo`（无参考照） |
 | `genLookImage` | `MONTHLY_LIMIT` | `60`（改它要同步 `pages/profile/profile.js` 顶部同名常量） |
-| `genLookImage` | `WANX_KEY` | 阿里云百炼（DashScope）key，**用「试衣」时必需**（见 README 试衣说明） |
+| `genLookImage` | `WANX_KEY` | 阿里云百炼（DashScope）key，**「演绎」出图必需**（演绎按钮按调用显式传 `provider:'wanx'`） |
 | `aiRecommend` | `SILICONFLOW_KEY` | 硅基流动 key（**推荐配**，复用生图那个即可） |
 | `aiRecommend` | `TEXT_PROVIDER` | `auto`（硅基流动优先，失败回落 AI+）｜`siliconflow`｜`cloudbase` |
 | `aiRecommend` | `SF_TEXT_MODEL` | `deepseek-ai/DeepSeek-V4-Flash-0731` |
@@ -289,8 +289,9 @@ meta 是**单例文档**。早期把天气缓存写在 meta 里，而 `getWeathe
 | 改云函数代码 | **是**（右键该云函数重新上传部署） |
 | 改环境变量 | **是**（改完需重新部署该云函数才生效） |
 
-**换生图链路**：只改 `genLookImage` 的 `IMG_PROVIDER` 环境变量，业务代码不用动。
-`siliconflow`（默认）｜`wanx`（需 `WANX_KEY`）｜`aitryon`（需 `WANX_KEY`）｜`hunyuan`（免 key，最贵）
+**生图渠道**由云函数校验，白名单三个：`siliconflow`（默认）｜`wanx`（阿里云百炼，需 `WANX_KEY`）｜`hunyuan`（免 key，最贵）。
+⚠️ `IMG_PROVIDER` 只影响**未显式指定 provider 的调用方**——推荐页「演绎」按钮按调用写死 `provider:'wanx'`，改它不会改变「演绎」走哪条链路。
+ℹ️ `aitryon`（虚拟试衣）已于 **2026-09-10 退役**，不再在白名单内；再传会被显式拒绝（不静默换渠道）。
 
 ---
 
