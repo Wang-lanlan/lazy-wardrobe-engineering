@@ -9,10 +9,10 @@
 > 2026-09-10 下午增量：§0.5 补抠图部署前置与签名要点；**新增 §0.6 保存到相册链路**；
 > 懒懒签名 bloggerNote 标注为已下线（§1 地图 / §2 契约）；收藏页双列顺序契约与验证门入表。
 >
-> 2026-09-10 晚增量（tickets/0008-01+02）：**试衣链路整体退役**——推荐页单按钮「演绎」；
-> 演绎模型换代 `qwen-image-3.0`（**显式 prompt_extend:false**）；§3 缓存键公式删试衣键、
+> 2026-09-10 晚增量（tickets/0008-01+02）：**旧试穿链路整体退役**——推荐页单按钮「演绎」；
+> 演绎模型换代 `qwen-image-3.0`（**显式 prompt_extend:false**）；§3 缓存键公式删旧试穿键、
 > 演绎键补 renderSalt+provider+模型标签；出口自证三件套 modelUsed/rewriteStatus/usageInfo；
-> lib/aitryon.js 拆解（toHttps→lib/url.js 全 provider 共用、pickAitryonItems→pickRenderSlots）；
+> lib 拆解（toHttps→lib/url.js 全 provider 共用、取件逻辑改名 pickRenderSlots）；
 > 模型换代全程与 Why 见 tickets/0008 与 METHODOLOGY §4.7。
 >
 > 2026-09-15 增量（spec 0011，票 01–08）：**出图入口从一个变两个**——AI 方案卡 + 手动搭配卡
@@ -106,7 +106,7 @@ lib/recommendCore.js        # 编排：温度过滤→双闸→buildPrompt→gen
 lib/provenance.js           # 四态溯源：satisfied/not-satisfied/not-injected/no-ref + autoMapLook结构优先映射
 lib/caseMatcher.js          # 文本重叠评分（仅作自动映射的次级排序，不当闸门）
 lib/slotMap.js              # role↔category 映射 + canonicalFit 词表归一化
-                            #   （原 CATEGORY_TO_AITRYON_SLOT 已无消费方，随 aitryon 退役；清理记 CONTEXT ④#10）
+                            #   （原 CATEGORY_TO_OLDTRYON_SLOT 已无消费方，随早期专用试穿模型退役；清理记 CONTEXT ④#10）
 lib/bloggerNote.js          # 【已下线 2026-09-10】懒懒签名 provenance+画像确定性组合。推荐页 09-08 移除、
                             #   收藏页 09-10 移除 → **全产品零界面消费方**；云函数仍在生成（有产出无消费，清理待拍板）
 index.js#genText            # LLM双provider：硅基流动(公开模型!) → 云开发AI+(hunyuan/deepseek候选)
@@ -143,9 +143,9 @@ lib/usage.js                # localMonth北京时间月 + 额度判定（前端p
 | itemIds | 只认安全候选池（温度过滤后）里的 id，幻觉 id 丢弃 |
 | 第 1 套 | 必须 100% 衣橱、wish 必空（enforceSet1AllWardrobe 兜底） |
 | 懒懒签名（已下线） | 【2026-09-10】两页都不再渲染 bloggerNote；云函数仍生成该字段，属有产出无消费，清理待拍板 |
-| 出图触发 | 拼贴零成本默认；演绎图**只在用户点击时生成**，从不自动（试衣已退役 0008-01）。**入口有两个**（spec 0011）：AI 方案卡的「演绎」+ 手动搭配卡的「演绎」（`pages/pick-items` 选品后确认），走同一条链路 |
+| 出图触发 | 拼贴零成本默认；演绎图**只在用户点击时生成**，从不自动（旧试穿入口已退役 0008-01）。**入口有两个**（spec 0011）：AI 方案卡的「演绎」+ 手动搭配卡的「演绎」（`pages/pick-items` 选品后确认），走同一条链路 |
 | 参考照防线 | refImageType 缺失或 self → 自拍**不进画面**（fail-closed）；演绎用内置虚拟模特底图 |
-| 已退役渠道 | provider 传 'aitryon' → **显式拒绝**（不静默换渠道、不出图；e2e-render 场景 F 守卫） |
+| 已退役渠道 | 早期专用试穿模型（传其名）→ **显式拒绝**（不静默换渠道、不出图；e2e-render 场景 F 守卫） |
 | 配饰进画面 | 帽/鞋/包**没有参考图槽**，只靠 prompt 文字 → 演绎图里时有时无属**已知结构限制**，别当 bug 查；两趟方案见票 0009 |
 
 ## 3. 缓存键公式（输入即键，铁律）
@@ -161,7 +161,7 @@ baseKey    = md5(排序后itemIds + scene + note归一) + '-' + PROMPT_VERSION +
              # keyTag = renderModelTag + '@' + QWEN_EDIT_SIZE   ← 2026-09-17：尺寸也进键
              #   （尺寸提成 env 后不换键会命中旧尺寸图 = 铁律一同类病；刻意不并进 renderModelTag
              #     是因为后者同时是回传前端的 modelUsed，掺 @size 会把「模型名」污染成「模型名@尺寸」）
-             #（原试衣键 baseKey+AITRYON_MODEL+personSalt 已随 aitryon 退役删除，0008-02）
+             #（原旧试穿键 baseKey+AITRYON_MODEL+personSalt 已随早期模型退役删除，0008-02）
 覆盖率     = **不进键**（票 07）。它不影响画面，进键只会让开/关把同一张图拆成两份缓存；
              结果随 genCache 落库（带 coverageVersion），命中缓存时白拿、不重复花钱
 ```
@@ -207,7 +207,7 @@ LLM 自报 inspoId
    - `BUILD_TAG` ↔ 前端 `REQUIRED_CLOUD_BUILD` ↔ e2e-render.js 守卫（三处！）
    - `MONTHLY_LIMIT` ↔ profile.js 常量
    - `localMonth` 云函数版 ↔ 前端同构版
-   - ~~slotMap 的 aitryon 槽位 ↔ aitryon.js 内联映射~~（aitryon.js 已删；slotMap 的 CATEGORY_TO_AITRYON_SLOT 无消费方，下次动 aiRecommend 顺手清理）
+   - ~~slotMap 的专用模型槽位 ↔ 旧库内联映射~~（旧库已删；slotMap 的 CATEGORY_TO_AITRYON_SLOT 无消费方，下次动 aiRecommend 顺手清理）
    - slotMap `FIT_SEP_RE` ↔ fitTaxonomy `SEP_RE` ↔ lookPrompt 内联 `SEP_RE`（三处分隔符表，改一处同步三处）
    - getSeason：recommendCore 版（refreshCases 已于 2026-09-08 退役，现为唯一真源）
    - fit 编辑三件套：`utils/fitTaxonomy.js`（单一实现，item-edit 与 upload-item 共用——勿复制回页面）
@@ -229,7 +229,7 @@ LLM 自报 inspoId
 | 档案去 tab 决策 | `docs/tickets/0007-profile-untab/01-untab.md` |
 | fit 品类路由词表 | `utils/fitTaxonomy.js`（前端含编辑三件套）/ `cloudfunctions/aiRecommend/lib/fitTaxonomy.js`（云函数份）|
 | 演绎链路 spec | `docs/specs/0003-render-pipeline-dual-button.md` |
-| 试衣退役 + 模型换代全程（Why / 票 / 坑） | `docs/tickets/0008-model-lifecycle-migration/`（01 入口退役 / 02 迁 qwen-image-3.0+自证 / 03 保真待做 / 04 输入图归一待做）+ METHODOLOGY §4.7 |
+| 旧试穿入口退役 + 模型换代全程（Why / 票 / 坑） | `docs/tickets/0008-model-lifecycle-migration/`（01 入口退役 / 02 迁 qwen-image-3.0+自证 / 03 保真待做 / 04 输入图归一待做）+ METHODOLOGY §4.7 |
 | 配饰两趟生图（生图重点，未落地） | `docs/tickets/0009-two-pass-rendering/01-accessory-second-pass.md` |
 | 词表归一化细节 | `slotMap.js` 头注释（fit 枚举）/ `fitTaxonomy.js`（fit 数组本体）/ `caseGate.js#seasonIntersects`（季节）/ `tempBand.js#ALL_SEASONS`（兜底） |
 | meta 自愈与 _openid 收敛 | `genLookImage/index.js` 0) 段注释 + `CONTEXT.md` ③.5-7 |
