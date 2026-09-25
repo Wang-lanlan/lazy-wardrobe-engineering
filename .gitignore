@@ -46,6 +46,10 @@ utils/
 dev/genLookImage/
 app.js
 app.wxss
+# 以下两文件曾被误跟踪：app.json 引用的 pages/ 均不公开（公开 clone 本就无法编译），
+# pageStub.js 是无人 require 的孤儿——它们不属于方法论层，移出跟踪。
+app.json
+dev/pageStub.js
 
 # 顶级 dev 测试/运行器依赖被排除的私有模块（clone 下来必 broken import）
 # → 仅保留自包含、零依赖的 dev/demo-gates/（node dev/demo-gates/run.js 即跑）
